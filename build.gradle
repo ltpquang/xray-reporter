@@ -12,8 +12,8 @@ repositories {
 }
 
 ext {
-    xrayUpdaterVersion = "1.0.0"
-    cucumberVersion = "6.3.0"
+    xrayUpdaterVersion = "1.0.1"
+    cucumberVersion = "6.7.0"
 }
 
 dependencies {
