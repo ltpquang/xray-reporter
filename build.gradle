@@ -14,12 +14,16 @@ repositories {
 ext {
     xrayUpdaterVersion = "1.0.1"
     cucumberVersion = "6.7.0"
+    cucumberMessageVersion = "13.1.0"
+    cucumberGherkinVersion = "15.0.2"
 }
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation "com.github.ltpquang:xray-status-updater:$xrayUpdaterVersion"
     implementation "io.cucumber:cucumber-plugin:$cucumberVersion"
+    implementation "io.cucumber:messages:$cucumberMessageVersion"
+    implementation "io.cucumber:gherkin:$cucumberGherkinVersion"
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 

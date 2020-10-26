@@ -2,11 +2,11 @@ package com.ltpquang.cucumber.plugin
 
 import com.ltpquang.xray.client.XrayClient
 import com.ltpquang.xray.models.Status
+import io.cucumber.gherkin.GherkinDocumentBuilder
+import io.cucumber.gherkin.Parser
+import io.cucumber.messages.Messages
 import io.cucumber.plugin.ConcurrentEventListener
-import io.cucumber.plugin.event.EventPublisher
-import io.cucumber.plugin.event.TestCaseEvent
-import io.cucumber.plugin.event.TestCaseFinished
-import io.cucumber.plugin.event.TestCaseStarted
+import io.cucumber.plugin.event.*
 import java.net.URL
 
 /**
@@ -19,30 +19,59 @@ class XrayReporter(url: URL) : ConcurrentEventListener {
             "${url.protocol}://${url.host}",
             url.userInfo.split(":")[0],
             url.userInfo.split(":")[1])
+    private var featureTags: List<String> = ArrayList()
 
     override fun setEventPublisher(publisher: EventPublisher?) {
+        publisher?.registerHandlerFor(TestSourceRead::class.java, this::handleTestSourceRead)
         publisher?.registerHandlerFor(TestCaseStarted::class.java, this::handleTestCaseStarted)
         publisher?.registerHandlerFor(TestCaseFinished::class.java, this::handleTestCaseFinished)
     }
 
+    private fun handleTestSourceRead(event: TestSourceRead) {
+        val parser: Parser<Messages.GherkinDocument.Builder> = Parser(
+            GherkinDocumentBuilder { "" })
+        val builder: Messages.GherkinDocument.Builder = parser.parse(event.source)
+        val doc: Messages.GherkinDocument = builder.build()
+        val tagList = doc.feature?.tagsList
+        featureTags = tagList?.mapNotNull { it.name }!!
+    }
+
     private fun handleTestCaseStarted(event: TestCaseStarted) {
-        val (testExecKey, testKey) = extractIssues(event) ?: return
+        val testKey = getTestKey(event)
+        val testExecKey = getTestExecutionKey()
+        if (testKey.isEmpty() || testExecKey.isEmpty()) {
+            println("skip reporting")
+            return
+        }
         xrayClient.setStatus(testKey, testExecKey, Status.EXECUTING)
     }
 
     private fun handleTestCaseFinished(event: TestCaseFinished) {
-        val (testExecKey, testKey) = extractIssues(event) ?: return
+        val testKey = getTestKey(event)
+        val testExecKey = getTestExecutionKey()
         val resolvedStatus = resolveStatus(event.result?.status!!)
+        if (testKey.isEmpty() || testExecKey.isEmpty()) {
+            println("skip reporting")
+            return
+        }
         xrayClient.setStatus(testKey, testExecKey, resolvedStatus)
     }
 
-    // Test Execution Issue Key - Test Issue Key
-    private fun extractIssues(event: TestCaseEvent): Pair<String, String>? {
-        val tags = event.testCase.tags
-        if (tags.isEmpty() || tags.size < 2) {
-            return null
+    private fun getTestExecutionKey(): String {
+        if (featureTags.isEmpty()) {
+            println("WARNING: Empty feature tag")
+            return ""
         }
-        return Pair(tags[0].removePrefix("@"), tags[1].removePrefix("@"))
+        return featureTags[0].removePrefix("@")
+    }
+
+    private fun getTestKey(event: TestCaseEvent): String {
+        val tags = event.testCase.tags.filter { !featureTags.contains(it) }
+        if (tags.isEmpty()) {
+            println("WARNING: Empty scenario tag")
+            return ""
+        }
+        return tags[0].removePrefix("@")
     }
 
     private fun resolveStatus(status: io.cucumber.plugin.event.Status): Status =
