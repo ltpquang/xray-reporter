@@ -12,7 +12,7 @@ repositories {
 }
 
 ext {
-    xrayUpdaterVersion = "1.0.1"
+    xrayUpdaterVersion = "1.0.2"
     cucumberVersion = "6.7.0"
     cucumberMessageVersion = "13.1.0"
     cucumberGherkinVersion = "15.0.2"
